@@ -1,27 +1,35 @@
 import express from "express";
+import cookieParser from "cookie-parser";
+import path from "path";
+import cors from "cors";
 
-// EXPRESS APP
-const app = express();
+import authRoutes from "./routes/auth.route.js";
+import messageRoutes from "./routes/message.route.js";
+import { connectDB } from "./lib/db.js";
+import { ENV } from "./lib/env.js";
+import { app, server } from "./lib/socket.js";
 
-// MIDDLEWARES
-app.use(express.json());
+const __dirname = path.resolve();
 
-// PORT
-const PORT = process.env.PORT || 3000;
+const PORT = ENV.PORT || 3000;
 
-// ROUTES
-app.use("api/auth", (req, res) => {
-  res.send("Auth route");
-});
+app.use(express.json({ limit: "5mb" })); // req.body
+app.use(cors({ origin: ENV.CLIENT_URL, credentials: true }));
+app.use(cookieParser());
 
-app.use("api/message", (req, res) => {
-  res.send("Message route");
-});
+app.use("/api/auth", authRoutes);
+app.use("/api/messages", messageRoutes);
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
+// make ready for deployment
+if (ENV.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  app.get("*", (_, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  });
+}
+
+server.listen(PORT, () => {
+  console.log("Server running on port: " + PORT);
+  connectDB();
 });
